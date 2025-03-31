@@ -1,8 +1,8 @@
 #!/bin/bash
 
-source .env
+source ../.env
 
-forge create \
+forge create --broadcast \
   --rpc-url $RPC_URL \
   --private-key $PRIVATE_KEY \
   --chain-id $CHAIN_ID \

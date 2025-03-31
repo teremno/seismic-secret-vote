@@ -15,7 +15,7 @@ contract SecretVoteTest is Test {
     function testSubmitEncryptedVote() public {
         bytes32 encrypted = keccak256(abi.encodePacked("yes"));
 
-        vm.prank(voter); // голосує від імені voter
+        vm.prank(voter);
         voteContract.submitEncryptedVote(encrypted);
 
         bytes32 stored = voteContract.encryptedVotes(voter);
@@ -31,6 +31,53 @@ contract SecretVoteTest is Test {
         vm.prank(voter);
         vm.expectRevert("You have already voted");
         voteContract.submitEncryptedVote(encrypted);
+    }
+
+    function testRevealVoteSuccess() public {
+        bytes32 encrypted = keccak256(abi.encodePacked("yes"));
+
+        vm.prank(voter);
+        voteContract.submitEncryptedVote(encrypted);
+
+        voteContract.closeVoting();
+
+        vm.prank(voter);
+        voteContract.revealVote("yes");
+
+        string memory revealed = voteContract.revealedVotes(voter);
+        assertEq(revealed, "yes", "Vote should be revealed correctly");
+
+        uint256 count = voteContract.voteCounts("yes");
+        assertEq(count, 1, "Vote count should increase");
+    }
+
+    function testRevealWithWrongStringShouldFail() public {
+        bytes32 encrypted = keccak256(abi.encodePacked("yes"));
+
+        vm.prank(voter);
+        voteContract.submitEncryptedVote(encrypted);
+
+        voteContract.closeVoting();
+
+        vm.prank(voter);
+        vm.expectRevert("Vote does not match encrypted");
+        voteContract.revealVote("no");
+    }
+
+    function testDoubleRevealShouldFail() public {
+        bytes32 encrypted = keccak256(abi.encodePacked("yes"));
+
+        vm.prank(voter);
+        voteContract.submitEncryptedVote(encrypted);
+
+        voteContract.closeVoting();
+
+        vm.prank(voter);
+        voteContract.revealVote("yes");
+
+        vm.prank(voter);
+        vm.expectRevert("Already revealed");
+        voteContract.revealVote("yes");
     }
 }
 
