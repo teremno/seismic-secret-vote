@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 contract SecretVote {
     address public owner;
     bool public votingOpen = true;
+    uint256 public votingDeadline;
 
     mapping(address => bytes32) public encryptedVotes;
     mapping(address => bool) public hasVoted;
@@ -14,12 +15,34 @@ contract SecretVote {
     event VoteSubmitted(address indexed voter);
     event VotingClosed();
     event VoteRevealed(address indexed voter, string vote);
+    event VotingDeadlineSet(uint256 deadline);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call");
+        _;
+    }
+
+    modifier onlyBeforeDeadline() {
+        require(
+            votingDeadline == 0 || block.timestamp <= votingDeadline,
+            "Voting deadline passed"
+        );
+        _;
+    }
 
     constructor() {
         owner = msg.sender;
     }
 
-    function submitEncryptedVote(bytes32 encryptedVote) public {
+    function setVotingDeadline(uint256 timestamp) public onlyOwner {
+        votingDeadline = timestamp;
+        emit VotingDeadlineSet(timestamp);
+    }
+
+    function submitEncryptedVote(bytes32 encryptedVote)
+        public
+        onlyBeforeDeadline
+    {
         require(votingOpen, "Voting is closed");
         require(!hasVoted[msg.sender], "You have already voted");
 
@@ -29,10 +52,8 @@ contract SecretVote {
         emit VoteSubmitted(msg.sender);
     }
 
-    function closeVoting() public {
-        require(msg.sender == owner, "Only owner can close voting");
+    function closeVoting() public onlyOwner {
         votingOpen = false;
-
         emit VotingClosed();
     }
 
@@ -42,7 +63,10 @@ contract SecretVote {
         require(!hasRevealed[msg.sender], "Already revealed");
 
         bytes32 expected = encryptedVotes[msg.sender];
-        require(keccak256(abi.encodePacked(plainVote)) == expected, "Vote does not match encrypted");
+        require(
+            keccak256(abi.encodePacked(plainVote)) == expected,
+            "Vote does not match encrypted"
+        );
 
         hasRevealed[msg.sender] = true;
         revealedVotes[msg.sender] = plainVote;
