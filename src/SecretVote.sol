@@ -12,6 +12,8 @@ contract SecretVote {
     mapping(address => string) public revealedVotes;
     mapping(string => uint256) public voteCounts;
 
+    address[] public revealedVoters; // 👈 NEW
+
     event VoteSubmitted(address indexed voter);
     event VotingClosed();
     event VoteRevealed(address indexed voter, string vote);
@@ -71,8 +73,25 @@ contract SecretVote {
         hasRevealed[msg.sender] = true;
         revealedVotes[msg.sender] = plainVote;
         voteCounts[plainVote]++;
+        revealedVoters.push(msg.sender); // 👈 NEW
 
         emit VoteRevealed(msg.sender, plainVote);
+    }
+
+    // 👇 NEW function
+    function getAllRevealedVotes()
+        public
+        view
+        returns (address[] memory, string[] memory)
+    {
+        uint256 count = revealedVoters.length;
+        string[] memory votes = new string[](count);
+
+        for (uint256 i = 0; i < count; i++) {
+            votes[i] = revealedVotes[revealedVoters[i]];
+        }
+
+        return (revealedVoters, votes);
     }
 }
 
