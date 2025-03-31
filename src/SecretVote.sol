@@ -7,9 +7,13 @@ contract SecretVote {
 
     mapping(address => bytes32) public encryptedVotes;
     mapping(address => bool) public hasVoted;
+    mapping(address => bool) public hasRevealed;
+    mapping(address => string) public revealedVotes;
+    mapping(string => uint256) public voteCounts;
 
     event VoteSubmitted(address indexed voter);
     event VotingClosed();
+    event VoteRevealed(address indexed voter, string vote);
 
     constructor() {
         owner = msg.sender;
@@ -32,6 +36,19 @@ contract SecretVote {
         emit VotingClosed();
     }
 
-    // Optional: revealVotes, result, etc.
+    function revealVote(string memory plainVote) public {
+        require(!votingOpen, "Voting must be closed to reveal");
+        require(hasVoted[msg.sender], "You did not vote");
+        require(!hasRevealed[msg.sender], "Already revealed");
+
+        bytes32 expected = encryptedVotes[msg.sender];
+        require(keccak256(abi.encodePacked(plainVote)) == expected, "Vote does not match encrypted");
+
+        hasRevealed[msg.sender] = true;
+        revealedVotes[msg.sender] = plainVote;
+        voteCounts[plainVote]++;
+
+        emit VoteRevealed(msg.sender, plainVote);
+    }
 }
 
