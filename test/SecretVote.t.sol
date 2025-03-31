@@ -79,5 +79,35 @@ contract SecretVoteTest is Test {
         vm.expectRevert("Already revealed");
         voteContract.revealVote("yes");
     }
+
+    function testSetVotingDeadline() public {
+        uint256 deadline = block.timestamp + 1 days;
+        voteContract.setVotingDeadline(deadline);
+
+        assertEq(voteContract.votingDeadline(), deadline, "Deadline should be set");
+    }
+
+    function testVotingBeforeDeadlineWorks() public {
+        uint256 deadline = block.timestamp + 1 days;
+        voteContract.setVotingDeadline(deadline);
+
+        bytes32 encrypted = keccak256(abi.encodePacked("yes"));
+        vm.prank(voter);
+        voteContract.submitEncryptedVote(encrypted);
+
+        assertTrue(voteContract.hasVoted(voter), "Vote should be recorded");
+    }
+
+    function testVotingAfterDeadlineFails() public {
+        uint256 deadline = block.timestamp + 1 days;
+        voteContract.setVotingDeadline(deadline);
+
+        vm.warp(block.timestamp + 2 days); // прокручуємо час
+
+        bytes32 encrypted = keccak256(abi.encodePacked("yes"));
+        vm.prank(voter);
+        vm.expectRevert("Voting deadline passed");
+        voteContract.submitEncryptedVote(encrypted);
+    }
 }
 
